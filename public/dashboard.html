@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Render Clone Pro - Панель управления</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .navbar-brand {
+            font-size: 24px;
+            font-weight: bold;
+            color: #f0f6fc;
+            text-decoration: none;
+        }
+        
+        .navbar-brand span {
+            color: #238636;
+        }
+        
+        .navbar-menu {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .navbar-menu a {
+            color: #8b949e;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .navbar-menu a:hover {
+            color: #f0f6fc;
+            background: #21262d;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #238636;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .logout-btn {
+            background: none;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        
+        .logout-btn:hover {
+            border-color: #f85149;
+            color: #f85149;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #f0f6fc;
+        }
+        
+        .stat-card .stat-label {
+            font-size: 14px;
+            color: #8b949e;
+            margin-top: 5px;
+        }
+        
+        .stat-card .stat-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+            .navbar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .navbar-menu {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+        
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #f0f6fc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #8b949e;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #238636;
+        }
+        
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #238636;
+            color: white;
+        }
+        
+        .btn:hover {
+            background: #2ea043;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #21262d;
+            color: #c9d1d9;
+        }
+        
+        .btn-secondary:hover {
+            background: #30363d;
+        }
+        
+        .btn-danger {
+            background: #da3633;
+        }
+        
+        .btn-danger:hover {
+            background: #f85149;
+        }
+        
+        .btn-success {
+            background: #238636;
+        }
+        
+        .btn-warning {
+            background: #d29922;
+            color: #0d1117;
+        }
+        
+        .btn-warning:hover {
+            background: #e3b341;
+        }
+        
+        .app-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .app-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        .app-item:hover {
+            border-color: #8b949e;
+        }
+        
+        .app-item .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .app-item .app-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #f0f6fc;
+        }
+        
+        .app-item .app-repo {
+            font-size: 13px;
+            color: #8b949e;
+            word-break: break-all;
+        }
+        
+        .app-item .app-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-success {
+            background: #238636;
+            color: white;
+        }
+        
+        .status-building {
+            background: #d29922;
+            color: #0d1117;
+        }
+        
+        .status-failed {
+            background: #da3633;
+            color: white;
+        }
+        
+        .status-pending {
+            background: #8b949e;
+            color: #0d1117;
+        }
+        
+        .app-item .app-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .app-item .app-actions .btn {
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+        
+        .log-window {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: #8b949e;
+        }
+        
+        .log-window .log-time {
+            color: #30363d;
+        }
+        
+        .log-window .log-success {
+            color: #3fb950;
+        }
+        
+        .log-window .log-error {
+            color: #f85149;
+        }
+        
+        .log-window .log-warning {
+            color: #d29922;
+        }
+        
+        .log-window .log-info {
+            color: #58a6ff;
+        }
+        
+        .websocket-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: #21262d;
+        }
+        
+        .websocket-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .dot-connected {
+            background: #3fb950;
+            box-shadow: 0 0 10px #3fb950;
+        }
+        
+        .dot-disconnected {
+            background: #f85149;
+        }
+        
+        .language-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            background: #21262d;
+            color: #8b949e;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .modal-close:hover {
+            color: #f0f6fc;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8b949e;
+        }
+        
+        .empty-state .emoji {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b949e;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #f0f6fc;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 400px;
+        }
+        
+        .toast-success {
+            border-left: 4px solid #238636;
+        }
+        
+        .toast-error {
+            border-left: 4px solid #f85149;
+        }
+        
+        .toast-info {
+            border-left: 4px solid #58a6ff;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="#" class="navbar-brand">🚀 Render <span>Clone</span></a>
+        <div class="navbar-menu">
+            <a href="#" onclick="showTab('dashboard')">📊 Панель</a>
+            <a href="#" onclick="showTab('apps')">📱 Приложения</a>
+            <a href="#" onclick="showTab('deployments')">📋 Деплои</a>
+            <a href="#" onclick="showTab('settings')">⚙️ Настройки</a>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <span id="userName" style="font-size:14px;">Администратор</span>
+                <button class="logout-btn" onclick="logout()">Выйти</button>
+            </div>
+            <div class="websocket-status">
+                <span class="dot dot-disconnected" id="wsDot"></span>
+                <span id="wsStatus">Отключено</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Статистика -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon">📱</div>
+                <div class="stat-value" id="statApps">0</div>
+                <div class="stat-label">Приложений</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-value" id="statDeployments">0</div>
+                <div class="stat-label">Деплоев</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👤</div>
+                <div class="stat-value" id="statUsers">0</div>
+                <div class="stat-label">Пользователей</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💾</div>
+                <div class="stat-value" id="statMemory">0%</div>
+                <div class="stat-label">Память</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-value" id="statCPU">0%</div>
+                <div class="stat-label">CPU</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-value" id="statUptime">0</div>
+                <div class="stat-label">Аптайм (мин)</div>
+            </div>
+        </div>
+
+        <!-- Создание приложения -->
+        <div class="card" id="createAppCard">
+            <h2>➕ Создать новое приложение</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Название приложения</label>
+                    <input type="text" id="appName" placeholder="my-awesome-app" value="test-app">
+                </div>
+                <div class="form-group">
+                    <label>Язык программирования</label>
+                    <select id="appLanguage">
+                        <option value="nodejs">Node.js</option>
+                        <option value="python">Python</option>
+                        <option value="go">Go</option>
+                        <option value="ruby">Ruby</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Репозиторий (Git URL)</label>
+                    <input type="text" id="repoUrl" placeholder="https://github.com/user/repo.git" value="https://github.com/gy22221112-boop/render-clone">
+                </div>
+                <div class="form-group">
+                    <label>Ветка</label>
+                    <input type="text" id="branch" value="main">
+                </div>
+                <div class="form-group">
+                    <label>Команда сборки (оставьте пустым для авто)</label>
+                    <input type="text" id="buildCmd" placeholder="npm install && npm run build">
+                </div>
+                <div class="form-group">
+                    <label>Команда запуска</label>
+                    <input type="text" id="startCmd" placeholder="node server.js">
+                </div>
+            </div>
+            <button class="btn" onclick="createApp()">🚀 Создать приложение</button>
+        </div>
+
+        <!-- Приложения и логи -->
+        <div class="grid-2col">
+            <div>
+                <div class="card">
+                    <h2>📱 Мои приложения</h2>
+                    <div id="appList" class="app-list">
+                        <div class="empty-state">
+                            <div class="emoji">📭</div>
+                            <p>Нет приложений</p>
+                            <p style="font-size:13px;">Создайте первое приложение выше</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="card">
+                    <h2>📋 Логи деплоя</h2>
+                    <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <span id="deployStatus" style="font-size:13px; color:#8b949e;">Нет активного деплоя</span>
+                        <button class="btn btn-secondary" onclick="clearLogs()" style="padding: 4px 12px; font-size:12px;">Очистить</button>
+                    </div>
+                    <div id="logWindow" class="log-window">
+                        <span style="color:#8b949e;">📡 Ожидание логов...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для настроек -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="color:#f0f6fc;">⚙️ Настройки</h2>
+                <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+            </div>
+            <div id="settingsContent">
+                <div class="form-group">
+                    <label>GitHub Webhook URL</label>
+                    <input type="text" id="webhookUrl" value="https://render-clone-6d49.onrender.com/api/webhooks/github/APP_ID" readonly>
+                    <button class="btn btn-secondary" onclick="copyWebhookUrl()" style="margin-top:10px;">📋 Копировать</button>
+                </div>
+                <hr style="border-color:#30363d; margin:20px 0;">
+                <div class="form-group">
+                    <label>Изменить пароль</label>
+                    <input type="password" id="newPassword" placeholder="Новый пароль">
+                    <button class="btn" onclick="changePassword()" style="margin-top:10px;">Сменить пароль</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ Глобальные переменные ============
+        let ws = null;
+        let currentDeploymentId = null;
+        let currentAppId = null;
+        let token = localStorage.getItem('token');
+        let isConnected = false;
+
+        // ============ WebSocket подключение ============
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('🔌 WebSocket подключен');
+                isConnected = true;
+                document.getElementById('wsDot').className = 'dot dot-connected';
+                document.getElementById('wsStatus').textContent = 'Подключено';
+                document.getElementById('wsStatus').style.color = '#3fb950';
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'log' || data.type === 'logs') {
+                        appendLog(data.data);
+                    }
+                } catch (error) {
+                    console.error('WebSocket ошибка:', error);
+                }
+            };
+            
+            ws.onclose = () => {
+                console.log('🔌 WebSocket отключен');
+                isConnected = false;
+                document.getElementById('wsDot').className = 'dot dot-disconnected';
+                document.getElementById('wsStatus').textContent = 'Отключено';
+                document.getElementById('wsStatus').style.color = '#f85149';
+                // Переподключение через 5 секунд
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket ошибка:', error);
+            };
+        }
+
+        // ============ Подписка на деплой ============
+        function subscribeToDeployment(deploymentId) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                setTimeout(() => subscribeToDeployment(deploymentId), 1000);
+                return;
+            }
+            
+            currentDeploymentId = deploymentId;
+            ws.send(JSON.stringify({
+                type: 'subscribe',
+                deploymentId: deploymentId
+            }));
+        }
+
+        // ============ Добавление лога ============
+        function appendLog(message) {
+            const logWindow = document.getElementById('logWindow');
+            const timestamp = new Date().toISOString().slice(0, 19);
+            
+            let logClass = 'log-info';
+            if (message.includes('✅') || message.includes('успешно')) logClass = 'log-success';
+            if (message.includes('❌') || message.includes('ошибка')) logClass = 'log-error';
+            if (message.includes('⚠️')) logClass = 'log-warning';
+            
+            const logLine = document.createElement('div');
+            logLine.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="${logClass}">${message}</span>`;
+            logWindow.appendChild(logLine);
+            logWindow.scrollTop = logWindow.scrollHeight;
+            
+            // Обновляем статус
+            if (message.includes('🚀 Деплой запущен')) {
+                document.getElementById('deployStatus').innerHTML = '🔄 Статус: <strong>Запущен</strong>';
+            }
+            if (message.includes('✅ Деплой успешно завершен')) {
+                document.getElementById('deployStatus').innerHTML = '✅ Статус: <strong style="color:#3fb950;">Успешно</strong>';
+            }
+            if (message.includes('❌ Ошибка')) {
+                document.getElementById('deployStatus').innerHTML = '❌ Статус: <strong style="color:#f85149;">Ошибка</strong>';
+            }
+        }
+
+        // ============ Очистка логов ============
+        function clearLogs() {
+            const logWindow = document.getElementById('logWindow');
+            logWindow.innerHTML = '<span style="color:#8b949e;">📡 Логи очищены</span>';
+            document.getElementById('deployStatus').innerHTML = 'Нет активного деплоя';
+        }
+
+        // ============ API запросы ============
+        async function apiRequest(endpoint, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...(options.headers || {})
+            };
+            
+            const response = await fetch(`/api${endpoint}`, {
+                ...options,
+                headers
+            });
+            
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error || `HTTP ${response.status}`);
+            }
+            
+            return response.json();
+        }
+
+        // ============ Проверка авторизации ============
+        async function checkAuth() {
+            if (!token) {
+                window.location.href = '/login';
+                return false;
+            }
+            
+            try {
+                const data = await apiRequest('/auth/verify');
+                if (data.valid) {
+                    document.getElementById('userName').textContent = data.user.username || 'Администратор';
+                    document.getElementById('userAvatar').textContent = (data.user.username || 'A')[0].toUpperCase();
+                    return true;
+                }
+            } catch (error) {
+                console.error('Ошибка авторизации:', error);
+            }
+            
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+            return false;
+        }
+
+        // ============ Выход ============
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        // ============ Создание приложения ============
+        async function createApp() {
+            const name = document.getElementById('appName').value;
+            const repository = document.getElementById('repoUrl').value;
+            const branch = document.getElementById('branch').value;
+            const language = document.getElementById('appLanguage').value;
+            const buildCommand = document.getElementById('buildCmd').value;
+            const startCommand = document.getElementById('startCmd').value;
+
+            if (!name || !repository) {
+                showToast('❌ Название и репозиторий обязательны', 'error');
+                return;
+            }
+
+            try {
+                const app = await apiRequest('/apps', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, repository, branch, language, buildCommand, startCommand })
+                });
+                showToast(`✅ Приложение "${name}" создано!`, 'success');
+                loadApps();
+                loadStats();
+                document.getElementById('appName').value = '';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        // ============ Загрузка приложений ============
+        async function loadApps() {
+            try {
+                const apps = await apiRequest('/apps');
+                const appList = document.getElementById('appList');
+                
+                if (apps.length === 0) {
+                    appList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="emoji">📭</div>
+                            <p>Нет приложений</p>
+                            <p style="font-size:13px;">Создайте первое приложение выше</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                appList.innerHTML = apps.map(app => `
+                    <div class="app-item">
+                        <div class="app-header">
+                            <div>
+                                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                    <span class="app-name">${app.name}</span>
+                                    <span class="language-badge">${app.language || 'nodejs'}</span>
+                                    <span class="app-status status-${app.status}">
+                                        ${app.status === 'deployed' ? '✅' : app.status === 'building' ? '🔄' : app.status === 'failed' ? '❌' : '⏳'}
+                                        ${app.status}
+                                    </span>
+                                </div>
+                                <div class="app-repo">📂 ${app.repository}</div>
+                                ${app.url ? `<div class="app-repo" style="color:#3fb950;">🌐 <a href="${app.url}" target="_blank" style="color:#3fb950;text-decoration:none;">${app.url}</a></div>` : ''}
+                            </div>
+                            <div class="app-actions">
+                                <button class="btn btn-success" onclick="deployApp('${app.id}')">🚀 Деплой</button>
+                                <button class="btn btn-secondary" onclick="viewDeployments('${app.id}')">📋 Логи</button>
+                                <button class="btn btn-danger" onclick="deleteApp('${app.id}')">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Ошибка загрузки приложений:', error);
+            }
+        }
+
+        // ============ Деплой приложения ============
+        async function deployApp(appId) {
+            try {
+                const result = await apiRequest(`/apps/${appId}/deploy`, {
+                    method: 'POST',
+                    body: JSON.stringify({ message: 'Ручной деплой' })
+                });
+                
+                currentDeploymentId = result.deploymentId;
+                currentAppId = appId;
+                document.getElementById('deployStatus').innerHTML = '🔄 Статус: <strong>Запущен</strong>';
+                clearLogs();
+                subscribeToDeployment(currentDeploymentId);
+                showToast(`🚀 Деплой запущен! ID: ${result.deploymentId}`, 'success');
+                loadApps();
+                loadStats();
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        // ============ Просмотр деплоев ============
+        async function viewDeployments(appId) {
+            try {
+                const deployments = await apiRequest(`/deployments?appId=${appId}`);
+                if (deployments.length === 0) {
+                    showToast('📭 Нет деплоев для этого приложения', 'info');
+                    return;
+                }
+                
+                const latestDeployment = deployments[0];
+                currentDeploymentId = latestDeployment.id;
+                clearLogs();
+                subscribeToDeployment(currentDeploymentId);
+                showToast(`📋 Загружены логи деплоя ${latestDeployment.id.slice(0,8)}`, 'info');
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        // ============ Удаление приложения ============
+        async function deleteApp(appId) {
+            if (!confirm('Удалить приложение и все связанные данные?')) return;
+            try {
+                await apiRequest(`/apps/${appId}`, { method: 'DELETE' });
+                showToast('✅ Приложение удалено', 'success');
+                loadApps();
+                loadStats();
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        // ============ Загрузка статистики ============
+        async function loadStats() {
+            try {
+                const stats = await apiRequest('/stats');
+                const resources = stats.resources || {};
+                
+                document.getElementById('statApps').textContent = stats.apps || 0;
+                document.getElementById('statDeployments').textContent = stats.deployments || 0;
+                document.getElementById('statUsers').textContent = stats.users || 0;
+                document.getElementById('statMemory').textContent = `${resources.memory || 0}%`;
+                document.getElementById('statCPU').textContent = `${resources.cpu || 0}%`;
+                document.getElementById('statUptime').textContent = resources.uptime || 0;
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+            }
+        }
+
+        // ============ Toast уведомления ============
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ============ Вкладки ============
+        function showTab(tab) {
+            // Простая навигация
+            if (tab === 'settings') {
+                document.getElementById('settingsModal').classList.add('active');
+            }
+            if (tab === 'dashboard') {
+                loadStats();
+                loadApps();
+            }
+            if (tab === 'apps') {
+                loadApps();
+                document.getElementById('createAppCard').scrollIntoView({ behavior: 'smooth' });
+            }
+            if (tab === 'deployments') {
+                loadApps();
+            }
+        }
+
+        // ============ Модальные окна ============
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // ============ Копирование Webhook URL ============
+        function copyWebhookUrl() {
+            const input = document.getElementById('webhookUrl');
+            input.select();
+            document.execCommand('copy');
+            showToast('✅ URL скопирован в буфер обмена', 'success');
+        }
+
+        // ============ Смена пароля ============
+        async function changePassword() {
+            const password = document.getElementById('newPassword').value;
+            if (!password || password.length < 4) {
+                showToast('❌ Пароль должен содержать минимум 4 символа', 'error');
+                return;
+            }
+            
+            try {
+                await apiRequest('/auth/change-password', {
+                    method: 'POST',
+                    body: JSON.stringify({ password })
+                });
+                showToast('✅ Пароль успешно изменен', 'success');
+                document.getElementById('newPassword').value = '';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        // ============ Инициализация ============
+        async function init() {
+            await checkAuth();
+            connectWebSocket();
+            loadStats();
+            loadApps();
+            
+            // Автообновление
+            setInterval(() => {
+                loadStats();
+            }, 10000);
+        }
+
+        // Запуск
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // Закрытие модальных окон по клику вне
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
