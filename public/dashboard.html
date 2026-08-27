@@ -54,6 +54,7 @@
             border-radius: 6px;
             transition: all 0.3s;
             font-size: 14px;
+            cursor: pointer;
         }
         
         .navbar-menu a:hover {
@@ -77,22 +78,6 @@
             justify-content: center;
             font-weight: bold;
             color: white;
-        }
-        
-        .logout-btn {
-            background: none;
-            border: 1px solid #30363d;
-            color: #8b949e;
-            padding: 6px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.3s;
-        }
-        
-        .logout-btn:hover {
-            border-color: #f85149;
-            color: #f85149;
         }
         
         .container {
@@ -508,6 +493,15 @@
                 opacity: 1;
             }
         }
+        
+        .auto-login-badge {
+            background: #238636;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -515,14 +509,14 @@
     <nav class="navbar">
         <a href="#" class="navbar-brand">🚀 Render <span>Clone</span></a>
         <div class="navbar-menu">
-            <a href="#" onclick="showTab('dashboard')">📊 Панель</a>
-            <a href="#" onclick="showTab('apps')">📱 Приложения</a>
-            <a href="#" onclick="showTab('deployments')">📋 Деплои</a>
-            <a href="#" onclick="showTab('settings')">⚙️ Настройки</a>
+            <a href="#" onclick="loadStats(); loadApps();">📊 Панель</a>
+            <a href="#" onclick="document.getElementById('createAppCard').scrollIntoView({ behavior: 'smooth' });">📱 Приложения</a>
+            <a href="#" onclick="loadApps();">📋 Деплои</a>
+            <a href="#" onclick="document.getElementById('settingsModal').classList.add('active');">⚙️ Настройки</a>
             <div class="user-info">
                 <div class="user-avatar" id="userAvatar">A</div>
                 <span id="userName" style="font-size:14px;">Администратор</span>
-                <button class="logout-btn" onclick="logout()">Выйти</button>
+                <span class="auto-login-badge">🔓 Авто-вход</span>
             </div>
             <div class="websocket-status">
                 <span class="dot dot-disconnected" id="wsDot"></span>
@@ -637,7 +631,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 style="color:#f0f6fc;">⚙️ Настройки</h2>
-                <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+                <button class="modal-close" onclick="document.getElementById('settingsModal').classList.remove('active')">&times;</button>
             </div>
             <div id="settingsContent">
                 <div class="form-group">
@@ -646,11 +640,8 @@
                     <button class="btn btn-secondary" onclick="copyWebhookUrl()" style="margin-top:10px;">📋 Копировать</button>
                 </div>
                 <hr style="border-color:#30363d; margin:20px 0;">
-                <div class="form-group">
-                    <label>Изменить пароль</label>
-                    <input type="password" id="newPassword" placeholder="Новый пароль">
-                    <button class="btn" onclick="changePassword()" style="margin-top:10px;">Сменить пароль</button>
-                </div>
+                <p style="color:#8b949e; font-size:13px;">🔓 Автоматический вход включен</p>
+                <p style="color:#8b949e; font-size:13px; margin-top:5px;">👤 Логин: admin / Пароль: admin123</p>
             </div>
         </div>
     </div>
@@ -660,8 +651,37 @@
         let ws = null;
         let currentDeploymentId = null;
         let currentAppId = null;
-        let token = localStorage.getItem('token');
-        let isConnected = false;
+        let token = null;
+
+        // ============ АВТОМАТИЧЕСКИЙ ВХОД ============
+        async function autoLogin() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        username: 'admin', 
+                        password: 'admin123' 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    token = data.token;
+                    localStorage.setItem('token', data.token);
+                    console.log('✅ Автоматический вход выполнен');
+                    document.getElementById('userName').textContent = 'Администратор (авто)';
+                    return true;
+                } else {
+                    console.error('❌ Ошибка автоматического входа:', data);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Ошибка автоматического входа:', error);
+                return false;
+            }
+        }
 
         // ============ WebSocket подключение ============
         function connectWebSocket() {
@@ -672,7 +692,6 @@
             
             ws.onopen = () => {
                 console.log('🔌 WebSocket подключен');
-                isConnected = true;
                 document.getElementById('wsDot').className = 'dot dot-connected';
                 document.getElementById('wsStatus').textContent = 'Подключено';
                 document.getElementById('wsStatus').style.color = '#3fb950';
@@ -691,11 +710,9 @@
             
             ws.onclose = () => {
                 console.log('🔌 WebSocket отключен');
-                isConnected = false;
                 document.getElementById('wsDot').className = 'dot dot-disconnected';
                 document.getElementById('wsStatus').textContent = 'Отключено';
                 document.getElementById('wsStatus').style.color = '#f85149';
-                // Переподключение через 5 секунд
                 setTimeout(connectWebSocket, 5000);
             };
             
@@ -733,7 +750,6 @@
             logWindow.appendChild(logLine);
             logWindow.scrollTop = logWindow.scrollHeight;
             
-            // Обновляем статус
             if (message.includes('🚀 Деплой запущен')) {
                 document.getElementById('deployStatus').innerHTML = '🔄 Статус: <strong>Запущен</strong>';
             }
@@ -756,9 +772,12 @@
         async function apiRequest(endpoint, options = {}) {
             const headers = {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
                 ...(options.headers || {})
             };
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
             
             const response = await fetch(`/api${endpoint}`, {
                 ...options,
@@ -771,35 +790,6 @@
             }
             
             return response.json();
-        }
-
-        // ============ Проверка авторизации ============
-        async function checkAuth() {
-            if (!token) {
-                window.location.href = '/login';
-                return false;
-            }
-            
-            try {
-                const data = await apiRequest('/auth/verify');
-                if (data.valid) {
-                    document.getElementById('userName').textContent = data.user.username || 'Администратор';
-                    document.getElementById('userAvatar').textContent = (data.user.username || 'A')[0].toUpperCase();
-                    return true;
-                }
-            } catch (error) {
-                console.error('Ошибка авторизации:', error);
-            }
-            
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-            return false;
-        }
-
-        // ============ Выход ============
-        function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
         }
 
         // ============ Создание приложения ============
@@ -824,7 +814,6 @@
                 showToast(`✅ Приложение "${name}" создано!`, 'success');
                 loadApps();
                 loadStats();
-                document.getElementById('appName').value = '';
             } catch (error) {
                 showToast(`❌ ${error.message}`, 'error');
             }
@@ -872,6 +861,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Ошибка загрузки приложений:', error);
+                showToast('❌ Ошибка загрузки приложений', 'error');
             }
         }
 
@@ -959,30 +949,6 @@
             }, 4000);
         }
 
-        // ============ Вкладки ============
-        function showTab(tab) {
-            // Простая навигация
-            if (tab === 'settings') {
-                document.getElementById('settingsModal').classList.add('active');
-            }
-            if (tab === 'dashboard') {
-                loadStats();
-                loadApps();
-            }
-            if (tab === 'apps') {
-                loadApps();
-                document.getElementById('createAppCard').scrollIntoView({ behavior: 'smooth' });
-            }
-            if (tab === 'deployments') {
-                loadApps();
-            }
-        }
-
-        // ============ Модальные окна ============
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-
         // ============ Копирование Webhook URL ============
         function copyWebhookUrl() {
             const input = document.getElementById('webhookUrl');
@@ -991,30 +957,15 @@
             showToast('✅ URL скопирован в буфер обмена', 'success');
         }
 
-        // ============ Смена пароля ============
-        async function changePassword() {
-            const password = document.getElementById('newPassword').value;
-            if (!password || password.length < 4) {
-                showToast('❌ Пароль должен содержать минимум 4 символа', 'error');
-                return;
-            }
-            
-            try {
-                await apiRequest('/auth/change-password', {
-                    method: 'POST',
-                    body: JSON.stringify({ password })
-                });
-                showToast('✅ Пароль успешно изменен', 'success');
-                document.getElementById('newPassword').value = '';
-            } catch (error) {
-                showToast(`❌ ${error.message}`, 'error');
-            }
-        }
-
         // ============ Инициализация ============
         async function init() {
-            await checkAuth();
+            // Автоматический вход
+            await autoLogin();
+            
+            // Подключение WebSocket
             connectWebSocket();
+            
+            // Загрузка данных
             loadStats();
             loadApps();
             
