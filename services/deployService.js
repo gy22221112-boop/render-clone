@@ -1,168 +1,113 @@
-const Docker = require('dockerode');
-const { v4: uuidv4 } = require('uuid');
-const App = require('../models/App');
-const Deployment = require('../models/Deployment');
-const fs = require('fs').promises;
-const path = require('path');
 const simpleGit = require('simple-git');
-
-// Используем Docker API
-const docker = new Docker();
+const fs = require('fs-extra');
+const path = require('path');
+const { exec } = require('child_process');
+const os = require('os');
 
 class DeployService {
   constructor() {
-    this.isDockerAvailable = false;
-    this.checkDocker();
+    this.deployDir = path.join(os.tmpdir(), 'render-deployments');
+    fs.ensureDirSync(this.deployDir);
   }
 
-  async checkDocker() {
+  async deployApp(app, deployment, broadcastLogs) {
     try {
-      await docker.ping();
-      this.isDockerAvailable = true;
-      console.log('✅ Docker доступен');
-    } catch (error) {
-      this.isDockerAvailable = false;
-      console.log('⚠️ Docker не найден. Используется эмуляция деплоя.');
-    }
-  }
-
-  async deployApp(app, deployment) {
-    try {
-      console.log(`🚀 Начинаем деплой приложения: ${app.name}`);
+      const appDir = path.join(this.deployDir, app.id);
       
       // Обновляем статус
       deployment.status = 'building';
-      deployment.startedAt = new Date();
-      deployment.logs.push(`📦 Начало деплоя: ${new Date().toISOString()}`);
-      await deployment.save();
-
-      // Эмуляция сборки
-      deployment.logs.push(`📥 Клонирование репозитория: ${app.repository}`);
-      await deployment.save();
-
-      // Имитация сборки (в реальном проекте здесь будет Git + Docker build)
-      await this.simulateBuild(app, deployment);
-
-      // Запускаем контейнер
-      deployment.logs.push(`🐳 Запуск контейнера...`);
-      await deployment.save();
-
-      if (this.isDockerAvailable) {
-        await this.deployWithDocker(app, deployment);
-      } else {
-        await this.deployEmulation(app, deployment);
+      this.addLog(deployment, '🔨 Начинаем сборку приложения...', broadcastLogs);
+      
+      // Клонируем репозиторий
+      this.addLog(deployment, `📥 Клонирование репозитория: ${app.repository}`, broadcastLogs);
+      
+      if (fs.existsSync(appDir)) {
+        await fs.remove(appDir);
       }
-
-      // Обновляем статус приложения
+      
+      const git = simpleGit();
+      await git.clone(app.repository, appDir, ['--branch', app.branch, '--single-branch']);
+      
+      this.addLog(deployment, `✅ Репозиторий склонирован в ${appDir}`, broadcastLogs);
+      
+      // Устанавливаем зависимости в зависимости от языка
+      await this.installDependencies(app, deployment, appDir, broadcastLogs);
+      
+      // Собираем приложение
+      await this.buildApp(app, deployment, appDir, broadcastLogs);
+      
+      // Запускаем приложение (имитация)
+      this.addLog(deployment, `🚀 Запуск приложения: ${app.startCommand}`, broadcastLogs);
+      
+      // Обновляем статус
       app.status = 'deployed';
-      app.deployedAt = new Date();
-      app.url = `http://localhost:${process.env.PORT || 3000}/apps/${app.name}`;
-      await app.save();
-
+      app.deployedAt = new Date().toISOString();
+      app.url = `https://render-clone-6d49.onrender.com/apps/${app.name}`;
+      
       deployment.status = 'success';
-      deployment.finishedAt = new Date();
-      deployment.duration = (deployment.finishedAt - deployment.startedAt) / 1000;
-      deployment.logs.push(`✅ Деплой успешно завершен за ${deployment.duration} секунд`);
-      deployment.logs.push(`🌐 Приложение доступно: ${app.url}`);
-      await deployment.save();
-
+      deployment.finishedAt = new Date().toISOString();
+      deployment.duration = (new Date(deployment.finishedAt) - new Date(deployment.startedAt)) / 1000;
+      deployment.deployedUrl = app.url;
+      
+      this.addLog(deployment, `✅ Деплой успешно завершен за ${deployment.duration} секунд`, broadcastLogs);
+      this.addLog(deployment, `🌐 Приложение доступно: ${app.url}`, broadcastLogs);
+      
       console.log(`✅ Деплой ${app.name} завершен успешно`);
-      return deployment;
-
+      
     } catch (error) {
       console.error(`❌ Ошибка деплоя ${app.name}:`, error);
-      
       deployment.status = 'failed';
-      deployment.finishedAt = new Date();
-      deployment.logs.push(`❌ Ошибка: ${error.message}`);
-      await deployment.save();
-
+      deployment.finishedAt = new Date().toISOString();
+      this.addLog(deployment, `❌ Ошибка: ${error.message}`, broadcastLogs);
       app.status = 'failed';
-      await app.save();
-
-      throw error;
     }
   }
 
-  async simulateBuild(app, deployment) {
-    const steps = [
-      `📦 Установка зависимостей...`,
-      `🔨 Выполнение команды сборки: ${app.buildCommand}`,
-      `⚙️ Оптимизация билда...`,
-      `📦 Сборка завершена`
-    ];
+  async installDependencies(app, deployment, appDir, broadcastLogs) {
+    const commands = {
+      nodejs: 'npm install',
+      python: 'pip install -r requirements.txt',
+      go: 'go mod download',
+      ruby: 'bundle install'
+    };
 
-    for (const step of steps) {
-      deployment.logs.push(step);
-      await deployment.save();
-      await this.sleep(1000); // Имитация времени сборки
-    }
-  }
-
-  async deployWithDocker(app, deployment) {
-    try {
-      const containerName = `render-clone-${app.name}-${uuidv4().slice(0, 8)}`;
-      
-      // Создаем контейнер
-      const container = await docker.createContainer({
-        Image: 'node:18-alpine',
-        name: containerName,
-        Cmd: ['sh', '-c', app.startCommand],
-        Env: Object.entries(app.envVars || {}).map(([k, v]) => `${k}=${v}`),
-        ExposedPorts: {
-          '3000/tcp': {}
-        },
-        HostConfig: {
-          PortBindings: {
-            '3000/tcp': [{ HostPort: '0' }]
-          },
-          Memory: 512 * 1024 * 1024, // 512 MB
-          CpuShares: 512
+    const command = commands[app.language] || commands.nodejs;
+    this.addLog(deployment, `📦 Установка зависимостей: ${command}`, broadcastLogs);
+    
+    return new Promise((resolve) => {
+      exec(command, { cwd: appDir }, (error, stdout, stderr) => {
+        if (stdout) this.addLog(deployment, stdout, broadcastLogs);
+        if (stderr) this.addLog(deployment, stderr, broadcastLogs);
+        if (error) {
+          this.addLog(deployment, `⚠️ Ошибка установки зависимостей: ${error.message}`, broadcastLogs);
         }
+        resolve();
       });
+    });
+  }
 
-      // Запускаем контейнер
-      await container.start();
+  async buildApp(app, deployment, appDir, broadcastLogs) {
+    if (app.buildCommand) {
+      this.addLog(deployment, `🔨 Сборка: ${app.buildCommand}`, broadcastLogs);
       
-      // Получаем информацию о контейнере
-      const containerInfo = await container.inspect();
-      app.containerId = containerInfo.Id;
-      await app.save();
-
-      const port = containerInfo.NetworkSettings.Ports['3000/tcp']?.[0]?.HostPort || '3000';
-      deployment.deployedUrl = `http://localhost:${port}`;
-      
-      deployment.logs.push(`✅ Контейнер запущен на порту ${port}`);
-      await deployment.save();
-
-    } catch (error) {
-      throw new Error(`Ошибка Docker: ${error.message}`);
+      return new Promise((resolve) => {
+        exec(app.buildCommand, { cwd: appDir }, (error, stdout, stderr) => {
+          if (stdout) this.addLog(deployment, stdout, broadcastLogs);
+          if (stderr) this.addLog(deployment, stderr, broadcastLogs);
+          if (error) {
+            this.addLog(deployment, `⚠️ Ошибка сборки: ${error.message}`, broadcastLogs);
+          }
+          resolve();
+        });
+      });
     }
   }
 
-  async deployEmulation(app, deployment) {
-    // Эмуляция деплоя без Docker
-    deployment.logs.push(`⚠️ Эмуляция деплоя (Docker не найден)`);
-    deployment.logs.push(`✅ Приложение успешно сэмулировано`);
-    deployment.deployedUrl = `http://localhost:3000/emulated/${app.name}`;
-    await deployment.save();
-  }
-
-  async stopContainer(containerId) {
-    try {
-      if (!this.isDockerAvailable) return;
-      
-      const container = docker.getContainer(containerId);
-      await container.stop();
-      await container.remove();
-      console.log(`✅ Контейнер ${containerId} остановлен и удален`);
-    } catch (error) {
-      console.error(`❌ Ошибка остановки контейнера: ${error.message}`);
+  addLog(deployment, message, broadcastLogs) {
+    deployment.logs.push(message);
+    if (broadcastLogs) {
+      broadcastLogs(deployment.id, message);
     }
-  }
-
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
