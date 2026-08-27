@@ -88,11 +88,31 @@
             transform: translateY(-1px);
         }
         
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         .error-message {
             color: #f85149;
             font-size: 14px;
             margin-top: 12px;
             display: none;
+            background: #1c0d0d;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #f85149;
+        }
+        
+        .success-message {
+            color: #3fb950;
+            font-size: 14px;
+            margin-top: 12px;
+            display: none;
+            background: #0d1c0d;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #3fb950;
         }
         
         .logo {
@@ -111,10 +131,27 @@
         .register-link a {
             color: #58a6ff;
             text-decoration: none;
+            cursor: pointer;
         }
         
         .register-link a:hover {
             text-decoration: underline;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -124,38 +161,53 @@
         <h1>Render Clone</h1>
         <p class="subtitle">Вход в панель управления</p>
         
-        <div class="form-group">
-            <label>Имя пользователя</label>
-            <input type="text" id="username" placeholder="admin" value="admin">
-        </div>
+        <form id="loginForm" onsubmit="return false;">
+            <div class="form-group">
+                <label>Имя пользователя</label>
+                <input type="text" id="username" placeholder="admin" value="admin" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Пароль</label>
+                <input type="password" id="password" placeholder="••••••••" value="admin123" required>
+            </div>
+            
+            <button type="submit" class="btn" id="loginBtn">Войти</button>
+        </form>
         
-        <div class="form-group">
-            <label>Пароль</label>
-            <input type="password" id="password" placeholder="••••••••" value="admin123">
-        </div>
-        
-        <button class="btn" onclick="login()">Войти</button>
-        
-        <div class="error-message" id="errorMessage">Неверный логин или пароль</div>
+        <div class="error-message" id="errorMessage">❌ Неверный логин или пароль</div>
+        <div class="success-message" id="successMessage">✅ Вход выполнен!</div>
         
         <div class="register-link">
-            Нет аккаунта? <a href="#" onclick="showRegister()">Зарегистрироваться</a>
+            Нет аккаунта? <a onclick="showRegister()">Зарегистрироваться</a>
         </div>
     </div>
 
     <script>
-        async function login() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+        // Обработчик формы
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Останавливаем перезагрузку страницы
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
             const errorEl = document.getElementById('errorMessage');
+            const successEl = document.getElementById('successMessage');
+            const loginBtn = document.getElementById('loginBtn');
             
+            // Скрываем старые сообщения
             errorEl.style.display = 'none';
+            successEl.style.display = 'none';
             
+            // Проверка на пустые поля
             if (!username || !password) {
-                errorEl.textContent = 'Введите логин и пароль';
+                errorEl.textContent = '❌ Введите логин и пароль';
                 errorEl.style.display = 'block';
                 return;
             }
+            
+            // Показываем загрузку
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="loading"></span> Вход...';
             
             try {
                 const response = await fetch('/api/auth/login', {
@@ -167,34 +219,53 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    errorEl.textContent = data.error || 'Ошибка входа';
+                    errorEl.textContent = '❌ ' + (data.error || 'Ошибка входа');
                     errorEl.style.display = 'block';
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Войти';
                     return;
                 }
                 
+                // Сохраняем токен
                 localStorage.setItem('token', data.token);
-                window.location.href = '/';
+                
+                // Показываем успех
+                successEl.textContent = '✅ Вход выполнен! Перенаправление...';
+                successEl.style.display = 'block';
+                loginBtn.innerHTML = '✅ Успешно!';
+                
+                // Перенаправление в панель
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+                
             } catch (error) {
-                errorEl.textContent = 'Ошибка соединения с сервером';
+                errorEl.textContent = '❌ Ошибка соединения с сервером';
                 errorEl.style.display = 'block';
-            }
-        }
-        
-        function showRegister() {
-            alert('Регистрация доступна только администратору.\nОбратитесь к администратору для создания аккаунта.');
-        }
-        
-        // Enter для входа
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                login();
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = 'Войти';
+                console.error('Ошибка:', error);
             }
         });
         
-        // Проверка токена при загрузке
+        // Автоматический вход, если есть токен
         if (localStorage.getItem('token')) {
             window.location.href = '/';
         }
+        
+        function showRegister() {
+            alert('📝 Регистрация доступна только администратору.\nОбратитесь к администратору для создания аккаунта.');
+        }
+        
+        // Быстрый вход через Enter
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
+        
+        console.log('🔑 Страница входа загружена');
+        console.log('📝 Используйте: admin / admin123');
     </script>
 </body>
 </html>
