@@ -10,6 +10,7 @@ const os = require('os');
 const { exec } = require('child_process');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Docker = require('dockerode');
 
 // Импорт сервисов
 const authRoutes = require('./routes/auth');
@@ -35,6 +36,22 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
+
+// Проверка Docker
+const docker = new Docker();
+let isDockerAvailable = false;
+
+async function checkDocker() {
+  try {
+    await docker.ping();
+    isDockerAvailable = true;
+    console.log('✅ Docker доступен');
+  } catch (error) {
+    isDockerAvailable = false;
+    console.log('⚠️ Docker не найден. Используется эмуляция.');
+  }
+}
+checkDocker();
 
 // ============ Хранилище в памяти ============
 const storage = {
@@ -162,9 +179,8 @@ global.deployApp = deployApp;
 // ============ Запуск мониторинга ============
 monitorService.startMonitoring(storage);
 
-// ============ ГЛАВНАЯ СТРАНИЦА - БЕЗ ВХОДА ============
+// ============ ГЛАВНАЯ СТРАНИЦА ============
 app.get('/', (req, res) => {
-  // Просто отдаем dashboard без проверки авторизации
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
@@ -174,5 +190,5 @@ server.listen(PORT, () => {
   console.log(`📡 WebSocket доступен на ws://localhost:${PORT}`);
   console.log(`🌐 Веб-кабинет: http://localhost:${PORT}`);
   console.log(`👤 Логин: ${process.env.ADMIN_USERNAME || 'admin'} / Пароль: ${process.env.ADMIN_PASSWORD || 'admin123'}`);
-  console.log(`✅ Вход отключен - автоматический доступ`);
+  console.log(`🐳 Docker: ${isDockerAvailable ? 'Доступен ✅' : 'Не доступен ⚠️'}`);
 });
