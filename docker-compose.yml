@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  render-clone:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: render-clone
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=your_super_secret_key_here_2026
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+    volumes:
+      - ./public:/app/public
+      - ./tmp:/tmp/render-deployments
+    restart: unless-stopped
