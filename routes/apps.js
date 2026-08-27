@@ -1,130 +1,143 @@
-const express = require('express');
-const router = express.Router();
-const App = require('../models/App');
-const Deployment = require('../models/Deployment');
-const deployService = require('../services/deployService');
+const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 
-// GET - список всех приложений
-router.get('/', async (req, res) => {
-  try {
-    const apps = await App.find().sort({ createdAt: -1 });
-    res.json(apps);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+module.exports = (storage) => {
+  const router = require('express').Router();
 
-// GET - получить приложение по ID
-router.get('/:id', async (req, res) => {
-  try {
-    const app = await App.findById(req.params.id);
+  // Middleware для проверки токена
+  const authMiddleware = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Требуется авторизация' });
+    }
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Неверный токен' });
+    }
+  };
+
+  // GET - все приложения
+  router.get('/', authMiddleware, (req, res) => {
+    const userApps = storage.apps.filter(a => a.userId === req.user.id);
+    res.json(userApps);
+  });
+
+  // GET - приложение по ID
+  router.get('/:id', authMiddleware, (req, res) => {
+    const app = storage.apps.find(a => a.id === req.params.id && a.userId === req.user.id);
     if (!app) {
       return res.status(404).json({ error: 'Приложение не найдено' });
     }
     res.json(app);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  });
 
-// POST - создать новое приложение
-router.post('/', async (req, res) => {
-  try {
-    const { name, repository, branch, buildCommand, startCommand, envVars } = req.body;
+  // POST - создать приложение
+  router.post('/', authMiddleware, (req, res) => {
+    const { name, repository, branch = 'main', language = 'nodejs', buildCommand, startCommand, envVars = {} } = req.body;
     
-    // Проверка на дубликат имени
-    const existingApp = await App.findOne({ name });
-    if (existingApp) {
+    if (storage.apps.find(a => a.name === name && a.userId === req.user.id)) {
       return res.status(400).json({ error: 'Приложение с таким именем уже существует' });
     }
 
-    const app = new App({
+    // Определяем команды по умолчанию для разных языков
+    const defaultCommands = {
+      nodejs: { build: 'npm install', start: 'node server.js' },
+      python: { build: 'pip install -r requirements.txt', start: 'python app.py' },
+      go: { build: 'go build -o app', start: './app' },
+      ruby: { build: 'bundle install', start: 'ruby app.rb' }
+    };
+
+    const defaults = defaultCommands[language] || defaultCommands.nodejs;
+
+    const app = {
+      id: uuidv4(),
+      userId: req.user.id,
       name,
       repository,
-      branch: branch || 'main',
-      buildCommand: buildCommand || 'npm install && npm run build',
-      startCommand: startCommand || 'npm start',
-      envVars: envVars || {}
-    });
+      branch,
+      language,
+      buildCommand: buildCommand || defaults.build,
+      startCommand: startCommand || defaults.start,
+      envVars,
+      status: 'pending',
+      deployedAt: null,
+      url: null,
+      containerId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
-    await app.save();
+    storage.apps.push(app);
     res.status(201).json(app);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  });
 
-// PUT - обновить приложение
-router.put('/:id', async (req, res) => {
-  try {
-    const app = await App.findById(req.params.id);
+  // PUT - обновить приложение
+  router.put('/:id', authMiddleware, (req, res) => {
+    const app = storage.apps.find(a => a.id === req.params.id && a.userId === req.user.id);
     if (!app) {
       return res.status(404).json({ error: 'Приложение не найдено' });
     }
 
     const { name, branch, buildCommand, startCommand, envVars } = req.body;
-    
     if (name) app.name = name;
     if (branch) app.branch = branch;
     if (buildCommand) app.buildCommand = buildCommand;
     if (startCommand) app.startCommand = startCommand;
-    if (envVars) app.envVars = envVars;
+    if (envVars) app.envVars = { ...app.envVars, ...envVars };
+    app.updatedAt = new Date().toISOString();
 
-    await app.save();
     res.json(app);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  });
 
-// DELETE - удалить приложение
-router.delete('/:id', async (req, res) => {
-  try {
-    const app = await App.findById(req.params.id);
-    if (!app) {
+  // DELETE - удалить приложение
+  router.delete('/:id', authMiddleware, (req, res) => {
+    const index = storage.apps.findIndex(a => a.id === req.params.id && a.userId === req.user.id);
+    if (index === -1) {
       return res.status(404).json({ error: 'Приложение не найдено' });
     }
-
-    // Остановить контейнер если есть
-    if (app.containerId) {
-      await deployService.stopContainer(app.containerId);
-    }
-
-    await app.deleteOne();
+    
+    storage.apps.splice(index, 1);
+    // Удаляем связанные деплои
+    storage.deployments = storage.deployments.filter(d => d.appId !== req.params.id);
+    
     res.json({ message: 'Приложение удалено' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  });
 
-// POST - деплой приложения
-router.post('/:id/deploy', async (req, res) => {
-  try {
-    const app = await App.findById(req.params.id);
+  // POST - запустить деплой
+  router.post('/:id/deploy', authMiddleware, async (req, res) => {
+    const app = storage.apps.find(a => a.id === req.params.id && a.userId === req.user.id);
     if (!app) {
       return res.status(404).json({ error: 'Приложение не найдено' });
     }
 
-    // Создаем новый деплой
-    const deployment = new Deployment({
-      appId: app._id,
+    const deployment = {
+      id: uuidv4(),
+      appId: app.id,
+      appName: app.name,
+      userId: req.user.id,
       commitHash: `auto-${Date.now()}`,
-      commitMessage: req.body.message || 'Ручной деплой'
-    });
+      commitMessage: req.body.message || 'Ручной деплой',
+      status: 'queued',
+      logs: [`📦 Начало деплоя: ${new Date().toISOString()}`],
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+      duration: null,
+      deployedUrl: null,
+      createdAt: new Date().toISOString()
+    };
 
-    await deployment.save();
-
-    // Запускаем асинхронный деплой
-    deployService.deployApp(app, deployment);
-
+    storage.deployments.push(deployment);
     res.status(202).json({
       message: 'Деплой запущен',
-      deploymentId: deployment._id,
-      status: deployment.status
+      deploymentId: deployment.id
     });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-module.exports = router;
+    // Запускаем асинхронный деплой
+    global.deployApp(app, deployment);
+  });
+
+  return router;
+};
