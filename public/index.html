@@ -1,271 +1,45 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход - Render Clone</title>
+    <meta http-equiv="refresh" content="0; url=/dashboard.html">
+    <title>Render Clone</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #0d1117;
             color: #e6edf3;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            font-family: Arial, sans-serif;
         }
-        
-        .login-container {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        .login-container h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-            color: #f0f6fc;
-        }
-        
-        .login-container .subtitle {
-            color: #8b949e;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            font-size: 13px;
-            color: #8b949e;
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 12px 14px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            color: #e6edf3;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #238636;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #238636;
-            color: white;
-        }
-        
-        .btn:hover {
-            background: #2ea043;
-            transform: translateY(-1px);
-        }
-        
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .error-message {
-            color: #f85149;
-            font-size: 14px;
-            margin-top: 12px;
-            display: none;
-            background: #1c0d0d;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #f85149;
-        }
-        
-        .success-message {
-            color: #3fb950;
-            font-size: 14px;
-            margin-top: 12px;
-            display: none;
-            background: #0d1c0d;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #3fb950;
-        }
-        
-        .logo {
-            font-size: 48px;
+        .loader {
             text-align: center;
-            margin-bottom: 20px;
         }
-        
-        .register-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #8b949e;
-        }
-        
-        .register-link a {
-            color: #58a6ff;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-        
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #ffffff;
+        .loader .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #30363d;
+            border-top-color: #238636;
             border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 0.6s linear infinite;
-            vertical-align: middle;
-            margin-right: 8px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
         }
-        
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="logo">🚀</div>
-        <h1>Render Clone</h1>
-        <p class="subtitle">Вход в панель управления</p>
-        
-        <form id="loginForm" onsubmit="return false;">
-            <div class="form-group">
-                <label>Имя пользователя</label>
-                <input type="text" id="username" placeholder="admin" value="admin" required>
-            </div>
-            
-            <div class="form-group">
-                <label>Пароль</label>
-                <input type="password" id="password" placeholder="••••••••" value="admin123" required>
-            </div>
-            
-            <button type="submit" class="btn" id="loginBtn">Войти</button>
-        </form>
-        
-        <div class="error-message" id="errorMessage">❌ Неверный логин или пароль</div>
-        <div class="success-message" id="successMessage">✅ Вход выполнен!</div>
-        
-        <div class="register-link">
-            Нет аккаунта? <a onclick="showRegister()">Зарегистрироваться</a>
-        </div>
+    <div class="loader">
+        <div class="spinner"></div>
+        <p>⏳ Перенаправление в панель управления...</p>
     </div>
-
     <script>
-        // Обработчик формы
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Останавливаем перезагрузку страницы
-            
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
-            const errorEl = document.getElementById('errorMessage');
-            const successEl = document.getElementById('successMessage');
-            const loginBtn = document.getElementById('loginBtn');
-            
-            // Скрываем старые сообщения
-            errorEl.style.display = 'none';
-            successEl.style.display = 'none';
-            
-            // Проверка на пустые поля
-            if (!username || !password) {
-                errorEl.textContent = '❌ Введите логин и пароль';
-                errorEl.style.display = 'block';
-                return;
-            }
-            
-            // Показываем загрузку
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = '<span class="loading"></span> Вход...';
-            
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    errorEl.textContent = '❌ ' + (data.error || 'Ошибка входа');
-                    errorEl.style.display = 'block';
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = 'Войти';
-                    return;
-                }
-                
-                // Сохраняем токен
-                localStorage.setItem('token', data.token);
-                
-                // Показываем успех
-                successEl.textContent = '✅ Вход выполнен! Перенаправление...';
-                successEl.style.display = 'block';
-                loginBtn.innerHTML = '✅ Успешно!';
-                
-                // Перенаправление в панель
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1000);
-                
-            } catch (error) {
-                errorEl.textContent = '❌ Ошибка соединения с сервером';
-                errorEl.style.display = 'block';
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = 'Войти';
-                console.error('Ошибка:', error);
-            }
-        });
-        
-        // Автоматический вход, если есть токен
-        if (localStorage.getItem('token')) {
-            window.location.href = '/';
-        }
-        
-        function showRegister() {
-            alert('📝 Регистрация доступна только администратору.\nОбратитесь к администратору для создания аккаунта.');
-        }
-        
-        // Быстрый вход через Enter
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
-            }
-        });
-        
-        console.log('🔑 Страница входа загружена');
-        console.log('📝 Используйте: admin / admin123');
+        // Если редирект не сработал
+        setTimeout(() => {
+            window.location.href = '/dashboard.html';
+        }, 1000);
     </script>
 </body>
 </html>
