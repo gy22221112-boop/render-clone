@@ -8,6 +8,8 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs-extra');
 const os = require('os');
 const { exec } = require('child_process');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // Импорт сервисов
 const authRoutes = require('./routes/auth');
@@ -40,7 +42,7 @@ const storage = {
   apps: [],
   deployments: [],
   webhooks: [],
-  wsClients: new Map(), // deploymentId -> Set of WebSocket clients
+  wsClients: new Map(),
   resources: {
     cpu: 0,
     memory: 0,
@@ -50,11 +52,10 @@ const storage = {
 
 // Создаем администратора при первом запуске
 if (!storage.users.find(u => u.username === process.env.ADMIN_USERNAME)) {
-  const bcrypt = require('bcryptjs');
-  const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
+  const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'admin123', 10);
   storage.users.push({
     id: uuidv4(),
-    username: process.env.ADMIN_USERNAME,
+    username: process.env.ADMIN_USERNAME || 'admin',
     password: hashedPassword,
     role: 'admin',
     createdAt: new Date().toISOString()
@@ -100,7 +101,6 @@ wss.on('connection', (ws, req) => {
         ws.deploymentId = deploymentId;
         console.log(`📡 Клиент подписан на деплой ${deploymentId}`);
         
-        // Отправляем последние логи
         const deployment = storage.deployments.find(d => d.id === deploymentId);
         if (deployment && deployment.logs) {
           ws.send(JSON.stringify({
@@ -144,11 +144,10 @@ function broadcastLogs(deploymentId, logMessage) {
   }
 }
 
-// Делаем функцию доступной глобально
 global.broadcastLogs = broadcastLogs;
 global.storage = storage;
 
-// ============ Функция деплоя с реальным Git ============
+// ============ Функция деплоя ============
 async function deployApp(app, deployment) {
   try {
     const deployService = require('./services/deployService');
@@ -158,19 +157,15 @@ async function deployApp(app, deployment) {
   }
 }
 
-// Делаем deployApp доступной
 global.deployApp = deployApp;
 
 // ============ Запуск мониторинга ============
 monitorService.startMonitoring(storage);
 
-// ============ Статические страницы ============
+// ============ ГЛАВНАЯ СТРАНИЦА - БЕЗ ВХОДА ============
 app.get('/', (req, res) => {
+  // Просто отдаем dashboard без проверки авторизации
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ============ Запуск сервера ============
@@ -178,5 +173,6 @@ server.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📡 WebSocket доступен на ws://localhost:${PORT}`);
   console.log(`🌐 Веб-кабинет: http://localhost:${PORT}`);
-  console.log(`👤 Логин: ${process.env.ADMIN_USERNAME} / Пароль: ${process.env.ADMIN_PASSWORD}`);
+  console.log(`👤 Логин: ${process.env.ADMIN_USERNAME || 'admin'} / Пароль: ${process.env.ADMIN_PASSWORD || 'admin123'}`);
+  console.log(`✅ Вход отключен - автоматический доступ`);
 });
